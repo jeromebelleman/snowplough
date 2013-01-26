@@ -18,18 +18,18 @@ Table: Task [task] (because 'My Work' is about tasks
 Green means you already have it.
 Nothing is red is either available or interesting.
 
-Number
-Created
-Short Description
-Assignment group
-Assigned to
-Caller
-Solution (Customer View)
-GGUS ID
-Description
-Close notes (Internal View)
-Additional comments (Customer View)
-Work notes (Internal View)
+ 0 Number
+ 1 Created
+ 2 Short Description
+ 3 Assignment group
+ 4 Assigned to
+ 5 Caller
+ 6 Solution (Customer View)
+ 7 GGUS ID
+ 8 Description
+ 9 Close notes (Internal View)
+10 Additional comments (Customer View)
+11 Work notes (Internal View)
 
 'Updated by' could be useful if can search for our whole group
 
@@ -50,7 +50,12 @@ def mkix(args):
     # Whoosh schema
     schema = Schema(number=TEXT(stored=True),
                     shortdesc=TEXT(stored=True),
-                    desc=TEXT(stored=True))
+                    solution=TEXT(stored=True),
+                    desc=TEXT(stored=True),
+                    closenotes=TEXT(stored=True),
+                    comments=TEXT(stored=True),
+                    worknotes=TEXT(stored=True),
+                   )
     ix = create_in(indexpath, schema)
 
     # Index CSV rows
@@ -63,7 +68,12 @@ def mkix(args):
         for i, row in enumerate(reader, 1):
             writer.add_document(number=unicode(row[0]),
                                 shortdesc=row[2].decode('latin-1'),
-                                desc=row[8].decode('latin-1'))
+                                solution=row[6].decode('latin-1'),
+                                desc=row[8].decode('latin-1'),
+                                closenotes=row[9].decode('latin-1'),
+                                comments=row[10].decode('latin-1'),
+                                worknotes=row[11].decode('latin-1'),
+                               )
             if i % 50 == 0:
                 print "Indexing %%0%dd ticketses\r" % MAXWIDTH % i,
                 sys.stdout.flush()
@@ -87,7 +97,9 @@ def search(args):
     ix = open_dir(indexpath)
     with ix.searcher() as searcher:
         # Build query
-        parser = MultifieldParser(["shortdesc", "desc"], ix.schema)
+        parser = MultifieldParser(['shortdesc', 'solution', 'desc',
+                                   'closenotes', 'comments', 'worknotes'],
+                                  ix.schema)
         query = parser.parse(unicode(' '.join(args.keyword)))
 
         # Search and display ticketses
