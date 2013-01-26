@@ -9,9 +9,6 @@ import argparse
 from argparse import ArgumentDefaultsHelpFormatter
 import csv
 
-from whoosh.index import create_in
-from whoosh.fields import *
-
 MAXWIDTH = 8 # Allow for about 100 M ticketses
 
 '''
@@ -40,6 +37,9 @@ Assigment group is javascript:getMyGroups()
 '''
 
 def mkix(args):
+    from whoosh.index import create_in
+    from whoosh.fields import Schema, TEXT
+
     # RC dir
     indexpath = args.rcdir + '/index'
     if not os.path.isdir(args.rcdir):
@@ -48,7 +48,9 @@ def mkix(args):
         os.mkdir(indexpath)
 
     # Whoosh schema
-    schema = Schema(number=TEXT, shortdesc=TEXT, desc=TEXT)
+    schema = Schema(number=TEXT(stored=True),
+                    shortdesc=TEXT(stored=True),
+                    desc=TEXT(stored=True))
     ix = create_in(indexpath, schema)
 
     # Index CSV rows
@@ -59,9 +61,6 @@ def mkix(args):
 
         t0 = time.time()
         for i, row in enumerate(reader, 1):
-            # writer.add_document(number=row[0].decode('utf-8'),
-            #                     shortdesc=row[2].decode('utf-8'),
-            #                     desc=row[8].decode('utf-8'))
             writer.add_document(number=unicode(row[0]),
                                 shortdesc=row[2].decode('latin-1'),
                                 desc=row[8].decode('latin-1'))
@@ -81,7 +80,22 @@ def ls(args):
             print "%% %ds %%s" % (MAXWIDTH + 4) % (row[0], row[2])
 
 def search(args):
-    pass
+    from whoosh.index import open_dir
+    from whoosh.qparser import QueryParser
+
+    indexpath = args.rcdir + '/index'
+    ix = open_dir(indexpath)
+    with ix.searcher() as searcher:
+        # TODO Need to search e.g. by short desc too
+        t0 = time.time()
+        query = QueryParser("shortdesc", ix.schema).parse(unicode(args.keyword[0]))
+        results = searcher.search(query, limit=None)
+        for r in results:
+            print "%% %ds %%s" % (MAXWIDTH + 4) % (r['number'], r['shortdesc'])
+
+        print
+        print "Found about %d ticketses in %.2f s" % \
+            (results.estimated_length(), results.runtime)
 
 def main():
     p = argparse.ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -98,6 +112,7 @@ def main():
     pm.set_defaults(func=mkix)
 
     ps = subs.add_parser('search', help='search ticketses')
+    ps.add_argument('keyword', nargs='+')
     ps.set_defaults(func=search)
 
     args = p.parse_args()
