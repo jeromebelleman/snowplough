@@ -12,6 +12,8 @@ import csv
 from whoosh.index import create_in
 from whoosh.fields import *
 
+MAXWIDTH = 8 # Allow for about 100 M ticketses
+
 '''
 Type: List
 Table: Task [task] (because 'My Work' is about tasks
@@ -64,9 +66,9 @@ def mkix(args):
                                 shortdesc=row[2].decode('latin-1'),
                                 desc=row[8].decode('latin-1'))
             if i % 50 == 0:
-                print "%07d ticketses\r" % i,
+                print "%%0%dd ticketses\r" % MAXWIDTH % i,
                 sys.stdout.flush()
-        print "%07d\n" % i,
+        print "%%0%dd\n" % MAXWIDTH % i,
         print "Committing..."
         writer.commit()
         print "Indexed %d ticketses in %.2f s" % (i, time.time() - t0)
@@ -76,7 +78,10 @@ def ls(args):
         reader = csv.reader(f)
         reader.next() # Skip header
         for row in reader:
-            print row[0]
+            print "%% %ds %%s" % (MAXWIDTH + 4) % (row[0], row[2])
+
+def search(args):
+    pass
 
 def main():
     p = argparse.ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -91,6 +96,9 @@ def main():
 
     pm = subs.add_parser('mkix', help='make index')
     pm.set_defaults(func=mkix)
+
+    ps = subs.add_parser('search', help='search ticketses')
+    ps.set_defaults(func=search)
 
     args = p.parse_args()
     args.func(args)
