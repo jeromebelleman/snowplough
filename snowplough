@@ -65,9 +65,9 @@ def mkix(args):
                                 shortdesc=row[2].decode('latin-1'),
                                 desc=row[8].decode('latin-1'))
             if i % 50 == 0:
-                print "%%0%dd ticketses\r" % MAXWIDTH % i,
+                print "Indexing %%0%dd ticketses\r" % MAXWIDTH % i,
                 sys.stdout.flush()
-        print "%%0%dd\n" % MAXWIDTH % i,
+        print "Indexing %%0%dd\n" % MAXWIDTH % i,
         print "Committing..."
         writer.commit()
         print "Indexed %d ticketses in %.2f s" % (i, time.time() - t0)
@@ -81,20 +81,23 @@ def ls(args):
 
 def search(args):
     from whoosh.index import open_dir
-    from whoosh.qparser import QueryParser
+    from whoosh.qparser import MultifieldParser
 
     indexpath = args.rcdir + '/index'
     ix = open_dir(indexpath)
     with ix.searcher() as searcher:
-        # TODO Need to search e.g. by short desc too
-        t0 = time.time()
-        query = QueryParser("shortdesc", ix.schema).parse(unicode(args.keyword[0]))
+        # Build query
+        parser = MultifieldParser(["shortdesc", "desc"], ix.schema)
+        query = parser.parse(unicode(' '.join(args.keyword)))
+
+        # Search and display ticketses
         results = searcher.search(query, limit=None)
         for r in results:
             print "%% %ds %%s" % (MAXWIDTH + 4) % (r['number'], r['shortdesc'])
 
+        # Report
         print
-        print "Found about %d ticketses in %.2f s" % \
+        print "Found about %d matching ticketses in %.2f s" % \
             (results.estimated_length(), results.runtime)
 
 def main():
