@@ -22,7 +22,7 @@ VIMCMDS = [
 # TODO Make case insensitive
 # TODO Open CSV or ZIP files
 # TODO List from index, don't query from CSV
-# TODO Remove ^Ms
+# TODO Profile option
 # TODO Display URL?
 
 '''
@@ -110,7 +110,7 @@ def vim(f, result):
                     ('Description', 'Close Notes', 'Comments', 'Work Notes')):
         if result[k]:
             print >>f, "{{{ " + l
-            print >>f, result[k]
+            print >>f, result[k].replace('\r', '')
             print >>f, "}}}"
 
     print >>f, "}}}"
