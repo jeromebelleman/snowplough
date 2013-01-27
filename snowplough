@@ -8,8 +8,12 @@ import time
 import argparse
 from argparse import ArgumentDefaultsHelpFormatter
 import csv
+import subprocess
+import tempfile, codecs
 
 MAXWIDTH = 8 # Allow for about 100 M ticketses
+
+# TODO Make case insensitive
 
 '''
 Type: List
@@ -89,6 +93,12 @@ def ls(args):
         for row in reader:
             print "%% %ds %%s" % (MAXWIDTH + 4) % (row[0], row[2])
 
+def vim(f, result):
+    print >>f, "{{{ %s %s" % (result['number'], result['shortdesc'])
+    print >>f, result['desc']
+    print >>f, "}}}"
+    print >>f
+
 def search(args):
     from whoosh.index import open_dir
     from whoosh.qparser import MultifieldParser
@@ -102,14 +112,28 @@ def search(args):
                                   ix.schema)
         query = parser.parse(unicode(' '.join(args.keyword)))
 
+        # Start Vim
+        if args.vim:
+            # FIXME Should be in user directory in /tmp
+            f = tempfile.NamedTemporaryFile(suffix='-snowplough')
+            uf = codecs.open(f.name, 'w', 'utf-8')
+
         # Search and display ticketses
         results = searcher.search(query, limit=None)
         for r in results:
-            print "%% %ds %%s" % (MAXWIDTH + 4) % (r['number'], r['shortdesc'])
+            if args.vim:
+                vim(uf, r)
+            else:
+                print "%% %ds %%s" % (MAXWIDTH + 4) % \
+                    (r['number'], r['shortdesc'])
+        f.flush()
+
+        if args.vim:
+            subprocess.call(['vim', '+set fdm=marker ic', f.name])
 
         # Report
-        print
-        print "Found about %d matching ticketses in %.2f s" % \
+        print >>sys.stderr
+        print >>sys.stderr, "Found about %d matching ticketses in %.2f s" % \
             (results.estimated_length(), results.runtime)
 
 def main():
@@ -128,6 +152,7 @@ def main():
 
     ps = subs.add_parser('search', help='search ticketses')
     ps.add_argument('keyword', nargs='+')
+    ps.add_argument('--vim', action='store_true')
     ps.set_defaults(func=search)
 
     args = p.parse_args()
