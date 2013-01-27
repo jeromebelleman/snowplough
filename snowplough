@@ -10,16 +10,16 @@ import time
 import argparse
 from argparse import ArgumentDefaultsHelpFormatter
 
+URL = "https://foo.service-now.com/service-portal/view-incident.do?n="
 MAXWIDTH = 8 # Allow for about 100 M ticketses
+ASSIGNEEWIDTH = 20
 
 VIMCMDS = [
            '+set fdm=marker ic',
            '+sy region snowHead start=/^\d\d-\d\d-\d\{4\}/ end=/View))/',
            '+hi link snowHead String',
           ]
-ASSIGNEEWIDTH = 20
 
-# TODO Display URL?
 # TODO Remove explicit unicode functions?
 
 '''
@@ -107,6 +107,7 @@ def mkix(args):
 
 def vim(f, result):
     print >>f, "{{{ %s %s" % (result['number'], result['shortdesc'])
+    print >>f, URL + result['number']
 
     for k, l in zip(('desc', 'closenotes', 'comments', 'worknotes'),
                     ('Description', 'Close Notes', 'Comments', 'Work Notes')):
