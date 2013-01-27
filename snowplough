@@ -13,7 +13,17 @@ import tempfile, codecs
 
 MAXWIDTH = 8 # Allow for about 100 M ticketses
 
+VIMCMDS = [
+           '+set fdm=marker ic',
+           '+sy region snowHead start=/^\d\d-\d\d-\d\{4\}/ end=/View))/',
+           '+hi link snowHead String',
+          ]
+
 # TODO Make case insensitive
+# TODO Open CSV or ZIP files
+# TODO List from index, don't query from CSV
+# TODO Remove ^Ms
+# TODO Display URL?
 
 '''
 Type: List
@@ -28,12 +38,12 @@ Nothing is red is either available or interesting.
  3 Assignment group
  4 Assigned to
  5 Caller
- 6 Solution (Customer View)
- 7 GGUS ID
- 8 Description
- 9 Close notes (Internal View)
-10 Additional comments (Customer View)
-11 Work notes (Internal View)
+   Solution (Customer View) -- Solution is in comments too
+ 6 GGUS ID
+ 7 Description
+ 8 Close notes (Internal View)
+ 9 Additional comments (Customer View)
+10 Work notes (Internal View)
 
 'Updated by' could be useful if can search for our whole group
 
@@ -54,7 +64,7 @@ def mkix(args):
     # Whoosh schema
     schema = Schema(number=TEXT(stored=True),
                     shortdesc=TEXT(stored=True),
-                    solution=TEXT(stored=True),
+                    # solution=TEXT(stored=True), # Solution is in comments too
                     desc=TEXT(stored=True),
                     closenotes=TEXT(stored=True),
                     comments=TEXT(stored=True),
@@ -72,11 +82,11 @@ def mkix(args):
         for i, row in enumerate(reader, 1):
             writer.add_document(number=unicode(row[0]),
                                 shortdesc=row[2].decode('latin-1'),
-                                solution=row[6].decode('latin-1'),
-                                desc=row[8].decode('latin-1'),
-                                closenotes=row[9].decode('latin-1'),
-                                comments=row[10].decode('latin-1'),
-                                worknotes=row[11].decode('latin-1'),
+                                # solution=row[6].decode('latin-1'),
+                                desc=row[7].decode('latin-1'),
+                                closenotes=row[8].decode('latin-1'),
+                                comments=row[9].decode('latin-1'),
+                                worknotes=row[10].decode('latin-1'),
                                )
             if i % 50 == 0:
                 print "Indexing %%0%dd ticketses\r" % MAXWIDTH % i,
@@ -95,7 +105,14 @@ def ls(args):
 
 def vim(f, result):
     print >>f, "{{{ %s %s" % (result['number'], result['shortdesc'])
-    print >>f, result['desc']
+
+    for k, l in zip(('desc', 'closenotes', 'comments', 'worknotes'),
+                    ('Description', 'Close Notes', 'Comments', 'Work Notes')):
+        if result[k]:
+            print >>f, "{{{ " + l
+            print >>f, result[k]
+            print >>f, "}}}"
+
     print >>f, "}}}"
     print >>f
 
@@ -107,7 +124,7 @@ def search(args):
     ix = open_dir(indexpath)
     with ix.searcher() as searcher:
         # Build query
-        parser = MultifieldParser(['shortdesc', 'solution', 'desc',
+        parser = MultifieldParser(['shortdesc', 'desc',
                                    'closenotes', 'comments', 'worknotes'],
                                   ix.schema)
         query = parser.parse(unicode(' '.join(args.keyword)))
@@ -126,10 +143,10 @@ def search(args):
             else:
                 print "%% %ds %%s" % (MAXWIDTH + 4) % \
                     (r['number'], r['shortdesc'])
-        f.flush()
 
         if args.vim:
-            subprocess.call(['vim', '+set fdm=marker ic', f.name])
+            f.flush()
+            subprocess.call(['vim'] + VIMCMDS + [f.name])
 
         # Report
         print >>sys.stderr
