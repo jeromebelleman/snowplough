@@ -7,7 +7,7 @@ from os.path import expanduser
 import time
 import argparse
 from argparse import ArgumentDefaultsHelpFormatter
-import csv
+import zipfile, csv
 import subprocess
 import tempfile, codecs
 
@@ -20,7 +20,6 @@ VIMCMDS = [
           ]
 
 # TODO Make case insensitive
-# TODO Open CSV or ZIP files
 # TODO List from index, don't query from CSV
 # TODO Profile option
 # TODO Display URL?
@@ -74,7 +73,13 @@ def mkix(args):
 
     # Index CSV rows
     writer = ix.writer()
-    with open(args.csvfile) as f:
+    try:
+        z = zipfile.ZipFile(args.snowfile)
+        f = z.open(args.csvname)
+    except zipfile.BadZipfile:
+        f = open(args.snowfile)
+
+    try:
         reader = csv.reader(f)
         reader.next() # Skip header
 
@@ -95,13 +100,9 @@ def mkix(args):
         print "Committing..."
         writer.commit()
         print "Indexed %d ticketses in %.2f s" % (i, time.time() - t0)
-
-def ls(args):
-    with open(args.csvfile) as f:
-        reader = csv.reader(f)
-        reader.next() # Skip header
-        for row in reader:
-            print "%% %ds %%s" % (MAXWIDTH + 4) % (row[0], row[2])
+        
+    except KeyboardInterrupt:
+        pass
 
 def vim(f, result):
     print >>f, "{{{ %s %s" % (result['number'], result['shortdesc'])
@@ -118,15 +119,19 @@ def vim(f, result):
 
 def search(args):
     from whoosh.index import open_dir
-    from whoosh.qparser import MultifieldParser
 
     indexpath = args.rcdir + '/index'
     ix = open_dir(indexpath)
     with ix.searcher() as searcher:
         # Build query
-        parser = MultifieldParser(['shortdesc', 'desc',
-                                   'closenotes', 'comments', 'worknotes'],
-                                  ix.schema)
+        if args.keyword == ['*']: # Just list
+            from whoosh.qparser import QueryParser
+            parser = QueryParser('number', ix.schema)
+        else:
+            from whoosh.qparser import MultifieldParser
+            parser = MultifieldParser(['shortdesc', 'desc',
+                                       'closenotes', 'comments', 'worknotes'],
+                                      ix.schema)
         query = parser.parse(unicode(' '.join(args.keyword)))
 
         # Start Vim
@@ -155,23 +160,25 @@ def search(args):
 
 def main():
     p = argparse.ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    p.add_argument('--csvfile', type=expanduser, help="SNOW CSV file",
-                   default='~/Me Own Knowledge Base.csv')
     p.add_argument('--rcdir', type=expanduser, help="runtime config dir",
                    default='~/.snowplough')
     subs = p.add_subparsers()
 
-    pl = subs.add_parser('ls', help="list ticketses")
-    pl.set_defaults(func=ls)
-
-    pm = subs.add_parser('mkix', help='make index')
+    # mkix sub-command
+    pm = subs.add_parser('mkix', help="make index")
+    pm.add_argument('snowfile', help="SNOW report zip or CSV file",
+                    type=expanduser)
+    pm.add_argument('--csvname', help="SNOW CSV name in zip file",
+                    default='Me Own Knowledge Base.csv')
     pm.set_defaults(func=mkix)
 
-    ps = subs.add_parser('search', help='search ticketses')
-    ps.add_argument('keyword', nargs='+')
+    # search sub-command
+    ps = subs.add_parser('search', help="search ticketses")
+    ps.add_argument('keyword', nargs='+', help="supports wildcards")
     ps.add_argument('--vim', action='store_true')
     ps.set_defaults(func=search)
 
+    # Parse arguments
     args = p.parse_args()
     args.func(args)
 
