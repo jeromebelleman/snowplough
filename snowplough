@@ -12,7 +12,8 @@ from argparse import ArgumentDefaultsHelpFormatter
 
 URL = "https://foo.service-now.com/service-portal/view-incident.do?n="
 MAXWIDTH = 8 # Allow for about 100 M ticketses
-ASSIGNEEWIDTH = 20
+ASSIGNEEWIDTH = 15
+GROUPWIDTH = 15
 
 VIMCMDS = [
            '+set fdm=marker ic',
@@ -21,6 +22,7 @@ VIMCMDS = [
           ]
 
 # TODO Remove explicit unicode functions?
+# TODO Date ranges
 
 '''
 Type: List
@@ -63,6 +65,7 @@ def mkix(args):
     schema = Schema(number=TEXT(stored=True),
                     assignee=TEXT(stored=True),
                     shortdesc=TEXT(stored=True),
+                    group=TEXT(stored=True),
                     # solution=TEXT(stored=True), # Solution is in comments too
                     desc=TEXT(stored=True),
                     closenotes=TEXT(stored=True),
@@ -88,6 +91,7 @@ def mkix(args):
             writer.add_document(number=unicode(row[0]),
                                 assignee=row[4].decode('latin-1'),
                                 shortdesc=row[2].decode('latin-1'),
+                                group=row[3].decode('latin-1'),
                                 # solution=row[6].decode('latin-1'),
                                 desc=row[7].decode('latin-1'),
                                 closenotes=row[8].decode('latin-1'),
@@ -117,7 +121,6 @@ def vim(f, result):
             print >>f, "}}}"
 
     print >>f, "}}}"
-    print >>f
 
 def search(args):
     import tempfile, codecs
@@ -149,8 +152,12 @@ def search(args):
             if args.vim:
                 vim(uf, r)
             else:
-                print "%% %ds %% %ds %%s" % (MAXWIDTH + 4, ASSIGNEEWIDTH) % \
-                    (r['number'], r['assignee'][:ASSIGNEEWIDTH], r['shortdesc'])
+                print "%% %ds %% %ds %% %ds %%s" % \
+                    (MAXWIDTH + 4, ASSIGNEEWIDTH, GROUPWIDTH) % \
+                    (r['number'],
+                     r['assignee'][:ASSIGNEEWIDTH],
+                     r['group'][:GROUPWIDTH],
+                     r['shortdesc'])
 
         if args.vim:
             import subprocess
