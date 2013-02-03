@@ -110,13 +110,15 @@ def mkix(args):
                                 comments=row[9].decode('latin-1'),
                                 worknotes=row[10].decode('latin-1'),
                                )
-            if i % 50 == 0:
+            if not args.quiet and i % 50 == 0:
                 print "Indexing %%0%dd ticketses\r" % MAXWIDTH % i,
                 sys.stdout.flush()
-        print "Indexing %%0%dd\n" % MAXWIDTH % i,
-        print "Committing..."
+        if not args.quiet:
+            print "Indexing %%0%dd\n" % MAXWIDTH % i,
+            print "Committing..."
         writer.commit()
-        print "Indexed %d ticketses in %.2f s" % (i, time.time() - t0)
+        if not args.quiet:
+            print "Indexed %d ticketses in %.2f s" % (i, time.time() - t0)
         
     except KeyboardInterrupt:
         pass
@@ -195,6 +197,8 @@ def main():
                     type=expanduser)
     pm.add_argument('--csvname', help="SNOW CSV name in zip file",
                     default='Me Own Knowledge Base.csv')
+    pm.add_argument('--quiet', action='store_true',
+                    help="don't print out anything")
     pm.set_defaults(func=mkix)
 
     # search sub-command
