@@ -21,7 +21,7 @@ GROUPWIDTH = 15
 
 VIMCMDS = [
            '+set fdm=marker ic',
-           '+sy region snowHead start=/^\d\d-\d\d-\d\{4\}/ end=/View))/',
+           '+sy region snowHead start=/^\d\d-\d\d-\d\{4\}/ end=/View))\?/',
            '+hi link snowHead String',
           ]
 
