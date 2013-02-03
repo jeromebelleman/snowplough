@@ -53,7 +53,9 @@ Assigment group is javascript:getMyGroups()
 '''
 
 def shortdescwidth():
-    _, w = subprocess.check_output(['stty', 'size']).split()
+    out, _ = subprocess.Popen(['stty', 'size'],
+                              stdout=subprocess.PIPE).communicate()
+    _, w = out.split()
 
     # FIXME Yes, looks good, is it really correct, though?
     return int(w) - MAXWIDTH - 4 - DATEWIDTH - ASSIGNEEWIDTH - GROUPWIDTH - 4
