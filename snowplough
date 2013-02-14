@@ -11,7 +11,8 @@ import time
 import argparse
 from argparse import ArgumentDefaultsHelpFormatter
 
-URL = "https://foo.service-now.com/service-portal/view-incident.do?n="
+INC = "https://foo.service-now.com/service-portal/view-incident.do?n="
+RQF = "https://foo.service-now.com/service-portal/view-request.do?n="
 TIMEINFMT = '%d-%m-%Y %H:%M:%S %Z'
 TIMEOUTFMT = '%Y-%m-%d'
 MAXWIDTH = 8 # Allow for about 100 M ticketses
@@ -26,6 +27,7 @@ VIMCMDS = [
           ]
 
 # TODO Remove explicit unicode functions?
+# TODO Sort/Filter by date
 
 '''
 Type: List
@@ -127,7 +129,14 @@ def mkix(args):
 
 def vim(f, result):
     print >>f, "{{{ %s %s" % (result['number'], result['shortdesc'])
-    print >>f, URL + result['number']
+    print >>f, '%s -- %s, %s' % (result['created'].strftime(TIMEOUTFMT),
+                                 result['assignee'],
+                                 result['group'],
+                                )
+    if result['number'][:3] == 'INC':
+        print >>f, INC + result['number']
+    else: 
+        print >>f, RQF + result['number']
 
     for k, l in zip(('desc', 'closenotes', 'comments', 'worknotes'),
                     ('Description', 'Close Notes', 'Comments', 'Work Notes')):
