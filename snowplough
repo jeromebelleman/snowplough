@@ -61,6 +61,14 @@ def shortdescwidth():
 
     return int(w) - MAXWIDTH - 4 - DATEWIDTH - ASSIGNEEWIDTH - GROUPWIDTH
 
+def fields(args):
+    from whoosh.index import open_dir
+
+    indexpath = args.rcdir + '/index'
+    ix = open_dir(indexpath)
+    for n in ix.schema.names():
+        print n
+
 def mkix(args):
     import zipfile, csv
     from whoosh.index import create_in
@@ -207,6 +215,10 @@ def main():
     p.add_argument('--rcdir', type=expanduser, help="runtime config dir",
                    default='~/.snowplough')
     subs = p.add_subparsers()
+
+    # fields sub-command
+    pl = subs.add_parser('fields', help="list fields")
+    pl.set_defaults(func=fields)
 
     # mkix sub-command
     pm = subs.add_parser('mkix', help="make index")
