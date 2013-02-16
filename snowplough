@@ -28,7 +28,6 @@ VIMCMDS = [
           ]
 
 # TODO Remove explicit unicode functions?
-# TODO Sort/Filter by date
 
 '''
 Type: List
@@ -176,7 +175,11 @@ def search(args):
             uf = codecs.open(f.name, 'w', 'utf-8')
 
         # Search and display ticketses
-        results = searcher.search(query, limit=None)
+        if args.sort:
+            results = searcher.search(query, limit=None, sortedby='created')
+        else:
+            results = searcher.search(query, limit=None)
+
         if not args.vim:
             sdw = shortdescwidth()
         for r in results:
@@ -221,7 +224,8 @@ def main():
     h = '''case-insensitive, supports wildcards and fuzzy dates
            (e.g. vom\* created:1 apr to 6 apr 2012)'''
     ps.add_argument('keyword', nargs='+', help=h)
-    ps.add_argument('--vim', action='store_true')
+    ps.add_argument('--sort', action='store_true', help='sort by creation time')
+    ps.add_argument('--vim', action='store_true', help='display in Vim')
     ps.set_defaults(func=search)
 
     # Parse arguments
