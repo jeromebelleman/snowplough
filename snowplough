@@ -6,6 +6,7 @@ sys.setdefaultencoding('utf-8')
 import os, os.path
 from os.path import expanduser
 import subprocess
+from datetime import datetime
 
 import time
 import argparse
@@ -63,7 +64,6 @@ def shortdescwidth():
     return int(w) - MAXWIDTH - 4 - DATEWIDTH - ASSIGNEEWIDTH - GROUPWIDTH - 4
 
 def mkix(args):
-    from datetime import datetime
     import zipfile, csv
     from whoosh.index import create_in
     from whoosh.fields import Schema, TEXT, DATETIME
@@ -160,9 +160,13 @@ def search(args):
             parser = QueryParser('number', ix.schema)
         else:
             from whoosh.qparser import MultifieldParser
+            from whoosh.qparser.dateparse import DateParserPlugin
+
             parser = MultifieldParser(['shortdesc', 'desc',
                                        'closenotes', 'comments', 'worknotes'],
                                       ix.schema)
+            parser.add_plugin(DateParserPlugin(basedate=datetime.now(),
+                                               free=True))
         query = parser.parse(unicode(' '.join(args.keyword)))
 
         # Start Vim
@@ -214,8 +218,9 @@ def main():
 
     # search sub-command
     ps = subs.add_parser('search', help="search ticketses")
-    ps.add_argument('keyword', nargs='+',
-                    help="case-insensitive, supports wildcards")
+    h = '''case-insensitive, supports wildcards and fuzzy dates
+           (e.g. vom\* created:1 apr to 6 apr 2012)'''
+    ps.add_argument('keyword', nargs='+', help=h)
     ps.add_argument('--vim', action='store_true')
     ps.set_defaults(func=search)
 
