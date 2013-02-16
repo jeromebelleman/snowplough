@@ -16,7 +16,7 @@ INC = "https://foo.service-now.com/service-portal/view-incident.do?n="
 RQF = "https://foo.service-now.com/service-portal/view-request.do?n="
 TIMEINFMT = '%d-%m-%Y %H:%M:%S %Z'
 TIMEOUTFMT = '%Y-%m-%d'
-MAXWIDTH = 8 # Allow for about 100 M ticketses
+MAXWIDTH = 11 # Allow for about 100 M ticketses
 DATEWIDTH = 10
 ASSIGNEEWIDTH = 15
 GROUPWIDTH = 15
@@ -59,8 +59,7 @@ def shortdescwidth():
                               stdout=subprocess.PIPE).communicate()
     _, w = out.split()
 
-    # FIXME Yes, looks good, is it really correct, though?
-    return int(w) - MAXWIDTH - 4 - DATEWIDTH - ASSIGNEEWIDTH - GROUPWIDTH - 4
+    return int(w) - MAXWIDTH - 4 - DATEWIDTH - ASSIGNEEWIDTH - GROUPWIDTH
 
 def mkix(args):
     import zipfile, csv
@@ -114,10 +113,10 @@ def mkix(args):
                                 worknotes=row[10].decode('latin-1'),
                                )
             if not args.quiet and i % 50 == 0:
-                print "Indexing %%0%dd ticketses\r" % MAXWIDTH % i,
+                print "Indexing %%0%dd ticketses\r" % (MAXWIDTH - 3) % i,
                 sys.stdout.flush()
         if not args.quiet:
-            print "Indexing %%0%dd\n" % MAXWIDTH % i,
+            print "Indexing %%0%dd\n" % (MAXWIDTH - 3) % i,
             print "Committing..."
         writer.commit()
         if not args.quiet:
@@ -187,7 +186,7 @@ def search(args):
                 vim(uf, r)
             else:
                 print "%% %ds %%s %% %ds %% %ds %%s" % \
-                    (MAXWIDTH + 4, ASSIGNEEWIDTH, GROUPWIDTH) % \
+                    (MAXWIDTH, ASSIGNEEWIDTH, GROUPWIDTH) % \
                     (r['number'],
                      r['created'].strftime(TIMEOUTFMT),
                      r['assignee'][:ASSIGNEEWIDTH],
