@@ -14,7 +14,7 @@ from argparse import ArgumentDefaultsHelpFormatter
 
 INC = "https://foo.service-now.com/service-portal/view-incident.do?n="
 RQF = "https://foo.service-now.com/service-portal/view-request.do?n="
-TIMEINFMT = '%d-%m-%Y %H:%M:%S %Z'
+TIMEINFMT = '%Y-%m-%d %H:%M:%S %Z'
 TIMEOUTFMT = '%Y-%m-%d'
 MAXWIDTH = 11 # Allow for about 100 M ticketses
 DATEWIDTH = 10
