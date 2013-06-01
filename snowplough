@@ -11,6 +11,7 @@ from datetime import datetime
 import time
 import argparse
 from argparse import ArgumentDefaultsHelpFormatter
+import ConfigParser
 
 INC = "https://foo.service-now.com/service-portal/view-incident.do?n="
 RQF = "https://foo.service-now.com/service-portal/view-request.do?n="
@@ -61,25 +62,34 @@ def shortdescwidth():
 
     return int(w) - MAXWIDTH - 4 - DATEWIDTH - ASSIGNEEWIDTH - GROUPWIDTH
 
-def fields(args):
+def fields(args, indexpath):
     from whoosh.index import open_dir
 
-    indexpath = args.rcdir + '/index'
-    ix = open_dir(indexpath)
+    try:
+        ix = open_dir(indexpath)
+    except IOError, e:
+        print >>sys.stderr, e
+        return 1
+    except whoosh.index.EmptyIndexError, e:
+        print >>sys.stderr, e
+        return 1
+
     for n in ix.schema.names():
         print n
 
-def mkix(args):
+def mkix(args, indexpath):
     import zipfile, csv
     from whoosh.index import create_in
     from whoosh.fields import Schema, TEXT, DATETIME
 
-    # RC dir
-    indexpath = args.rcdir + '/index'
-    if not os.path.isdir(args.rcdir):
-        os.mkdir(args.rcdir)
+    # Create index directory if it's not there yet
     if not os.path.isdir(indexpath):
-        os.mkdir(indexpath)
+        try:
+            os.mkdir(indexpath)
+        except OSError, e:
+            print >>sys.stderr, "Couldn't create index directory"
+            print >>sys.stderr, e
+            return 1
 
     # Whoosh schema
     schema = Schema(number=TEXT(stored=True),
@@ -153,12 +163,19 @@ def vim(f, result):
 
     print >>f, "}}}"
 
-def search(args):
+def search(args, indexpath):
     import tempfile, codecs
     from whoosh.index import open_dir
 
-    indexpath = args.rcdir + '/index'
-    ix = open_dir(indexpath)
+    try:
+        ix = open_dir(indexpath)
+    except IOError, e:
+        print >>sys.stderr, e
+        return 1
+    except whoosh.index.EmptyIndexError, e:
+        print >>sys.stderr, e
+        return 1
+
     with ix.searcher() as searcher:
         # Build query
         if args.keyword == ['*']: # Just list
@@ -211,16 +228,16 @@ def search(args):
             (results.estimated_length(), results.runtime)
 
 def main():
+    # Read arguments
     p = argparse.ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    p.add_argument('--rcdir', type=expanduser, help="runtime config dir",
-                   default='~/.snowplough')
+    p.add_argument('-f', '--configfile', type=expanduser, help="config file")
     subs = p.add_subparsers()
 
-    # fields sub-command
+    # Parse fields sub-command
     pl = subs.add_parser('fields', help="list fields")
     pl.set_defaults(func=fields)
 
-    # mkix sub-command
+    # Parse mkix sub-command
     pm = subs.add_parser('mkix', help="make index")
     pm.add_argument('snowfile', help="SNOW report zip or CSV file",
                     type=expanduser)
@@ -230,7 +247,7 @@ def main():
                     help="don't print out anything")
     pm.set_defaults(func=mkix)
 
-    # search sub-command
+    # Parse search sub-command
     ps = subs.add_parser('search', help="search ticketses")
     h = '''case-insensitive, supports wildcards and fuzzy dates
            (e.g. vom\* created:1 apr to 6 apr 2012)'''
@@ -241,7 +258,22 @@ def main():
 
     # Parse arguments
     args = p.parse_args()
-    args.func(args)
+
+    # Find and read config files
+    config = ConfigParser.RawConfigParser({'index': '~/.snowplough'})
+    if args.configfile:
+        configfiles = args.configfile,
+    else:
+        configfiles = ('/etc/snowploughrc', expanduser('~/.snowploughrc'))
+    config.read(configfiles)
+    try:
+        indexpath = expanduser(config.get('paths', 'index'))
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError), e:
+        print >>sys.stderr, e, "(searched %s)" % ' and '.join(configfiles)
+        return 1
+
+    # Run sub-command
+    return args.func(args, indexpath)
 
 if __name__ == '__main__':
     sys.exit(main())
