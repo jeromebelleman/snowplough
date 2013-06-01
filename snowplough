@@ -21,6 +21,7 @@ MAXWIDTH = 11 # Allow for about 100 M ticketses
 DATEWIDTH = 10
 ASSIGNEEWIDTH = 15
 GROUPWIDTH = 15
+CSVNAME = 'report.csv'
 
 VIMCMDS = [
            '+set fdm=marker ic',
@@ -62,7 +63,7 @@ def shortdescwidth():
 
     return int(w) - MAXWIDTH - 4 - DATEWIDTH - ASSIGNEEWIDTH - GROUPWIDTH
 
-def fields(args, indexpath):
+def fields(indexpath):
     from whoosh.index import open_dir
 
     try:
@@ -77,7 +78,7 @@ def fields(args, indexpath):
     for n in ix.schema.names():
         print n
 
-def mkix(args, indexpath):
+def mkix(indexpath, snowfile, csvname, quiet):
     import zipfile, csv
     from whoosh.index import create_in
     from whoosh.fields import Schema, TEXT, DATETIME
@@ -108,10 +109,10 @@ def mkix(args, indexpath):
     # Index CSV rows
     writer = ix.writer()
     try:
-        z = zipfile.ZipFile(args.snowfile)
-        f = z.open(args.csvname)
+        z = zipfile.ZipFile(snowfile)
+        f = z.open(csvname)
     except zipfile.BadZipfile:
-        f = open(args.snowfile)
+        f = open(snowfile)
 
     try:
         reader = csv.reader(f)
@@ -130,14 +131,14 @@ def mkix(args, indexpath):
                                 comments=row[9].decode('latin-1'),
                                 worknotes=row[10].decode('latin-1'),
                                )
-            if not args.quiet and i % 50 == 0:
+            if not quiet and i % 50 == 0:
                 print "Indexing %%0%dd ticketses\r" % (MAXWIDTH - 3) % i,
                 sys.stdout.flush()
-        if not args.quiet:
+        if not quiet:
             print "Indexing %%0%dd\n" % (MAXWIDTH - 3) % i,
             print "Committing..."
         writer.commit()
-        if not args.quiet:
+        if not quiet:
             print "Indexed %d ticketses in %.2f s" % (i, time.time() - t0)
         
     except KeyboardInterrupt:
@@ -163,7 +164,7 @@ def vim(f, result):
 
     print >>f, "}}}"
 
-def search(args, indexpath):
+def search(indexpath, keyword, dosort, dovim):
     import tempfile, codecs
     from whoosh.index import open_dir
 
@@ -178,7 +179,7 @@ def search(args, indexpath):
 
     with ix.searcher() as searcher:
         # Build query
-        if args.keyword == ['*']: # Just list
+        if keyword == ['*']: # Just list
             from whoosh.qparser import QueryParser
             parser = QueryParser('number', ix.schema)
         else:
@@ -190,24 +191,24 @@ def search(args, indexpath):
                                       ix.schema)
             parser.add_plugin(DateParserPlugin(basedate=datetime.now(),
                                                free=True))
-        query = parser.parse(unicode(' '.join(args.keyword)))
+        query = parser.parse(unicode(' '.join(keyword)))
 
         # Start Vim
-        if args.vim:
+        if dovim:
             # FIXME Should be in user directory in /tmp
             f = tempfile.NamedTemporaryFile(suffix='-snowplough')
             uf = codecs.open(f.name, 'w', 'utf-8')
 
         # Search and display ticketses
-        if args.sort:
+        if dosort:
             results = searcher.search(query, limit=None, sortedby='created')
         else:
             results = searcher.search(query, limit=None)
 
-        if not args.vim:
+        if not dovim:
             sdw = shortdescwidth()
         for r in results:
-            if args.vim:
+            if dovim:
                 vim(uf, r)
             else:
                 print "%% %ds %%s %% %ds %% %ds %%s" % \
@@ -218,7 +219,7 @@ def search(args, indexpath):
                      r['group'][:GROUPWIDTH],
                      r['shortdesc'][:sdw])
 
-        if args.vim:
+        if dovim:
             f.flush()
             subprocess.call(['vim'] + VIMCMDS + [f.name])
 
@@ -229,32 +230,30 @@ def search(args, indexpath):
 
 def main():
     # Read arguments
-    p = argparse.ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    p = argparse.ArgumentParser()
     p.add_argument('-f', '--configfile', type=expanduser, help="config file")
-    subs = p.add_subparsers()
 
     # Parse fields sub-command
-    pl = subs.add_parser('fields', help="list fields")
-    pl.set_defaults(func=fields)
+    gl = p.add_argument_group('list indexed fields')
+    gl.add_argument('--fields', action='store_true', help="list fields")
 
     # Parse mkix sub-command
-    pm = subs.add_parser('mkix', help="make index")
-    pm.add_argument('snowfile', help="SNOW report zip or CSV file",
-                    type=expanduser)
-    pm.add_argument('--csvname', help="SNOW CSV name in zip file",
-                    default='Me Own Knowledge Base.csv')
-    pm.add_argument('--quiet', action='store_true',
+    gm = p.add_argument_group('make index')
+    h = '''make index from report FILE, which may be a zip file containing
+        a CSV file called CSVNAME (defaulting to %s), or the CSV file
+        itself''' % CSVNAME
+    gm.add_argument('--mkix', metavar=('FILE', 'CSVNAME'), nargs='+', help=h)
+    gm.add_argument('-q', '--quiet', action='store_true',
                     help="don't print out anything")
-    pm.set_defaults(func=mkix)
 
     # Parse search sub-command
-    ps = subs.add_parser('search', help="search ticketses")
-    h = '''case-insensitive, supports wildcards and fuzzy dates
-           (e.g. vom\* created:1 apr to 6 apr 2012)'''
-    ps.add_argument('keyword', nargs='+', help=h)
-    ps.add_argument('--sort', action='store_true', help='sort by creation time')
-    ps.add_argument('--vim', action='store_true', help='display in Vim')
-    ps.set_defaults(func=search)
+    gs = p.add_argument_group('search tickets')
+    h = '''case-insensitive, supports wildcards and fuzzy dates (e.g. vom\*
+        created:1 apr to 6 apr 2012)'''
+    gs.add_argument('keyword', nargs='*', help=h, default=['*'])
+    gs.add_argument('-s', '--sort', action='store_true',
+                    help='sort by creation time')
+    gs.add_argument('-v', '--vim', action='store_true', help='display in Vim')
 
     # Parse arguments
     args = p.parse_args()
@@ -272,8 +271,15 @@ def main():
         print >>sys.stderr, e, "(searched %s)" % ' and '.join(configfiles)
         return 1
 
-    # Run sub-command
-    return args.func(args, indexpath)
+    # Run switch
+    if args.fields:
+        return fields(indexpath)
+    elif args.mkix:
+        snowfile = expanduser(args.mkix[0])
+        csvname = args.mkix[1] if len(args.mkix) > 1 else CSVNAME
+        return mkix(indexpath, snowfile, csvname, args.quiet)
+    else:
+        return search(indexpath, args.keyword, args.sort, args.vim)
 
 if __name__ == '__main__':
     sys.exit(main())
