@@ -3,8 +3,8 @@
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
-import os, os.path
-from os.path import expanduser
+import os
+from os.path import expanduser, isdir, dirname
 import subprocess
 from datetime import datetime
 
@@ -56,6 +56,17 @@ Nothing is red is either available or interesting.
 Assigment group is javascript:getMyGroups()
 '''
 
+def mkdirs(path):
+    if not os.path.isdir(path):
+        try:
+            if not os.path.isdir(dirname(path.rstrip('/'))):
+                os.mkdir(dirname(path.rstrip('/')))
+            os.mkdir(path)
+        except OSError, e:
+            print >>sys.stderr, "Couldn't create index directory"
+            print >>sys.stderr, e
+            raise
+
 def shortdescwidth():
     out, _ = subprocess.Popen(['stty', 'size'],
                               stdout=subprocess.PIPE).communicate()
@@ -84,13 +95,10 @@ def mkix(indexpath, snowfile, csvname, quiet):
     from whoosh.fields import Schema, TEXT, DATETIME
 
     # Create index directory if it's not there yet
-    if not os.path.isdir(indexpath):
-        try:
-            os.mkdir(indexpath)
-        except OSError, e:
-            print >>sys.stderr, "Couldn't create index directory"
-            print >>sys.stderr, e
-            return 1
+    try:
+        mkdirs(indexpath)
+    except OSError, e:
+        return 1
 
     # Whoosh schema
     schema = Schema(number=TEXT(stored=True),
@@ -164,7 +172,7 @@ def vim(f, result):
 
     print >>f, "}}}"
 
-def search(indexpath, keyword, dosort, dovim):
+def search(indexpath, tmppath, keyword, dosort, dovim):
     import tempfile, codecs
     from whoosh.index import open_dir
 
@@ -195,8 +203,14 @@ def search(indexpath, keyword, dosort, dovim):
 
         # Start Vim
         if dovim:
-            # FIXME Should be in user directory in /tmp
-            f = tempfile.NamedTemporaryFile(suffix='-snowplough')
+            # Create index directory if it's not there yet
+            try:
+                mkdirs(tmppath)
+            except OSError, e:
+                return 1
+
+            # Open tempfile
+            f = tempfile.NamedTemporaryFile(suffix='-snowplough', dir=tmppath)
             uf = codecs.open(f.name, 'w', 'utf-8')
 
         # Search and display ticketses
@@ -259,7 +273,11 @@ def main():
     args = p.parse_args()
 
     # Find and read config files
-    config = ConfigParser.RawConfigParser({'index': '~/.snowplough'})
+    defaults = {
+                'index': '~/.snowplough/index',
+                'tmp':   '~/.snowplough/tmp',
+               }
+    config = ConfigParser.RawConfigParser(defaults)
     if args.configfile:
         configfiles = args.configfile,
     else:
@@ -267,6 +285,7 @@ def main():
     config.read(configfiles)
     try:
         indexpath = expanduser(config.get('paths', 'index'))
+        tmppath = expanduser(config.get('paths', 'tmp'))
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError), e:
         print >>sys.stderr, e, "(searched %s)" % ' and '.join(configfiles)
         return 1
@@ -279,7 +298,7 @@ def main():
         csvname = args.mkix[1] if len(args.mkix) > 1 else CSVNAME
         return mkix(indexpath, snowfile, csvname, args.quiet)
     else:
-        return search(indexpath, args.keyword, args.sort, args.vim)
+        return search(indexpath, tmppath, args.keyword, args.sort, args.vim)
 
 if __name__ == '__main__':
     sys.exit(main())
