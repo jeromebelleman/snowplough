@@ -121,6 +121,9 @@ def mkix(indexpath, snowfile, csvname, quiet):
         f = z.open(csvname)
     except zipfile.BadZipfile:
         f = open(snowfile)
+    except KeyError, e:
+        print >>sys.stderr, e.message
+        return 1
 
     try:
         reader = csv.reader(f)
