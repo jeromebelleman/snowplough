@@ -1,0 +1,8 @@
+[paths]
+index = ~/.snowplough/index
+tmp   = ~/.snowplough/tmp
+
+[pager]
+command = vim +set fdm=marker ic
+              +sy region snowHead start=/^\d\d-\d\d-\d\{4\}/ end=/View))\?/
+              +hi link snowHead String
