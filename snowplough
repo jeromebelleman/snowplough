@@ -177,14 +177,14 @@ def vim(f, result):
 
 def search(indexpath, tmppath, keyword, dosort, dovim):
     import tempfile, codecs
-    from whoosh.index import open_dir
+    from whoosh.index import open_dir, EmptyIndexError
 
     try:
         ix = open_dir(indexpath)
     except IOError, e:
         print >>sys.stderr, e
         return 1
-    except whoosh.index.EmptyIndexError, e:
+    except EmptyIndexError, e:
         print >>sys.stderr, e
         return 1
 
