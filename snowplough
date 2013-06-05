@@ -21,7 +21,7 @@ MAXWIDTH = 11 # Allow for about 100 M ticketses
 DATEWIDTH = 10
 ASSIGNEEWIDTH = 15
 GROUPWIDTH = 15
-CSVNAME = 'report.csv'
+CSVNAME = 'snowplough.csv'
 
 VIMCMDS = [
            '+set fdm=marker ic',
