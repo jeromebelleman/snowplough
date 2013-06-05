@@ -289,9 +289,9 @@ def main():
     try:
         indexpath = expanduser(config.get('paths', 'index'))
         tmppath = expanduser(config.get('paths', 'tmp'))
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError), e:
-        print >>sys.stderr, e, "(searched %s)" % ' and '.join(configfiles)
-        return 1
+    except ConfigParser.NoSectionError:
+        indexpath = expanduser(defaults['index'])
+        tmppath = expanduser(defaults['tmp'])
 
     # Run switch
     if args.fields:
