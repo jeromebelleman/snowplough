@@ -1,0 +1,198 @@
+.TH "SNOWPLOUGH" "1" "June 2013" "" ""
+.hy
+.SH NAME
+.PP
+snowplough \[en] shovel off ServiceNow tickets
+.SH SYNOPSIS
+.PP
+\f[B]snowplough\f[]\ [\f[B]\-h\f[]]\ [\f[B]\-\-configfile\f[]\ \f[I]CONFIGFILE\f[]]\ [\f[B]\-\-sort\f[]]\ [\f[B]\-\-vim\f[]]\ \f[I]keyword\f[]\ [\f[I]keyword\ ...\f[]]
+.PP
+\f[B]snowplough\f[]\ [\f[B]\-h\f[]]\ [\f[B]\-\-configfile\f[]\ \f[I]CONFIGFILE\f[]]\ \f[B]\-\-fields\f[]
+.PP
+\f[B]snowplough\f[]\ [\f[B]\-h\f[]]\ [\f[B]\-\-configfile\f[]\ \f[I]CONFIGFILE\f[]]\ [\f[B]\-\-mkix\f[]\ \f[I]FILE\ [CSVNAME]\f[]]\ [\f[B]\-\-quiet\f[]]
+.SH DESCRIPTION
+.PP
+\f[B]snowplough\f[] is a simple\-minded tool which creates indices and
+body\-searches vast quantities of ServiceNow tickets, which is useful to
+find out how someone before you solved one particular problem.
+It essentially does what the ServiceNow Web interface already offers,
+only with more typing than clicking, and the UNIX way of doing things in
+mind so you can subsequently grep, awk and sed away.
+.PP
+There are three main operations driving \f[B]snowplough\f[]: by default,
+it body\-searches indices for the keywords it\[aq]s supplied; the
+\f[B]\-\-mkix\f[] switch generates indices from a ServiceNow report; the
+\f[B]\-\-fields\f[] switch lists the available fields in the index.
+.SH EXAMPLES
+.PP
+Look for tickets where the user reports his batch jobs aren\[aq]t being
+dispatched:
+.IP
+.nf
+\f[C]
+snowplough\ my\ job\ isn\[aq]t\ running
+\f[]
+.fi
+.PP
+Look for tickets where the user reports his VO membership expired, and
+display them in a Vim buffer, each ticket rolled up in a fold:
+.IP
+.nf
+\f[C]
+snowplough\ voms\ expired\ \-\-vim
+\f[]
+.fi
+.PP
+List all tickets:
+.IP
+.nf
+\f[C]
+snowplough
+\f[]
+.fi
+.PP
+List tickets created today:
+.IP
+.nf
+\f[C]
+snowplough\ created:today
+\f[]
+.fi
+.PP
+List tickets created last sunday:
+.IP
+.nf
+\f[C]
+snowplough\ created:last\ sunday
+\f[]
+.fi
+.PP
+List tickets created between Xmas and New Year\[aq]s Eve:
+.IP
+.nf
+\f[C]
+snowplough\ created:24\ dec\ to\ 31\ dec\ 2012
+\f[]
+.fi
+.SH GENERAL OPTIONS
+.TP
+.B \f[B]\-h, \-\-help\f[]
+Display a friendly help message.
+.RS
+.RE
+.TP
+.B \f[B]\-\-configfile CONFIGFILE\f[]
+Specify a different runtime configuration file (see CONFIGURATION FILE).
+.RS
+.RE
+.SH SEARCHING TICKETS
+.PP
+By default, \f[B]snowplough\f[] takes any number of arguments as
+keywords to look for.
+These are treated case\-insensitively.
+Wildcards are supported, as are searches by field and fuzzy dates (see
+the EXAMPLES).
+.TP
+.B \f[B]\-\-sort\f[]
+Sort by ticket creation time.
+.RS
+.RE
+.TP
+.B \f[B]\-\-vim\f[]
+Display found tickets with extra information in a Vim buffer.
+Each ticket is enclosed in a plain Vim fold which you can open with
+\f[B]zo\f[] and close with \f[B]zc\f[].
+Try \f[B]:help fold.txt\f[] in Vim for a complete reference on folds and
+how they will change your life.
+.RS
+.RE
+.SH MKIX SWITCH
+.PP
+The \f[B]\-\-mkix\f[] switch generates indices from a CSV ServiceNow
+report file.
+You can pass it a zip file containing such a report if you can\[aq]t be
+bothered to unpack it yourself.
+.TP
+.B \f[B]\-\-csvname CSVNAME\f[]
+Specify a different CSV file name to be extracted from the zip file.
+Currently defaults to \f[B]report.csv\f[].
+.RS
+.RE
+.TP
+.B \f[B]\-\-quiet\f[]
+Keep quiet while writing indices.
+This would be for instance desirable, should \f[B]\-\-mkix\f[] be run
+from a cronjob.
+.RS
+.RE
+.SH FIELDS SWITCH
+.PP
+The \f[B]\-\-fields\f[] switch lists the available fields which can be
+used in queries such as:
+.IP
+.nf
+\f[C]
+snowplough\ created:24\ dec\ to\ 31\ dec\ 2012\ assignee:fred
+\f[]
+.fi
+.SH CONFIGURATION FILE
+.PP
+By default, \f[B]snowplough\f[] looks for options from
+\f[B]/etc/snowploughrc\f[], then from \f[B]~/.snowploughrc\f[].
+Any option defined in the latter will override its value in the former.
+If \f[B]\-\-configfile CONFIGFILE\f[] is supplied, \f[B]CONFIGFILE\f[]
+will be the only configuration file considered and options set in
+e.g.\ \f[B]/etc/snowploughrc\f[] and \f[B]~/.snowploughrc\f[] will be
+disregarded.
+.PP
+The only currently understood options are the index and temporary file
+directory paths:
+.IP
+.nf
+\f[C]
+[paths]
+index\ =\ /path/to/blahdiblah\ #\ Defaults\ to\ ~/.snowplough/index
+tmp\ \ \ =\ ~/.snowplough/tmp\ \ \ #\ Defaults\ to\ ~/.snowplough/tmp
+\f[]
+.fi
+.SH BUILDING SERVICENOW REPORTS
+.PP
+The whole of \f[B]snowplough\f[] relies on the fact that ServiceNow
+graciously allows anyone of us to generate CSV files which are sent by
+mail.
+Here\[aq]s how it\[aq]s done.
+.PP
+In ServiceNow web portal, in the left pane, under the \f[B]Reports\f[]
+rollout, follow the \f[B]View / Run\f[] link.
+Make a new \f[B]Global report\f[].
+Give it a name, set the \f[B]Type\f[] to \f[B]List\f[] and the
+\f[B]Table\f[] to \f[B]Task [task]\f[].
+You need to select the following columns in the following order for
+\f[B]snowplough\f[] to understand the report: \f[B]Number, Created,
+Short Description, Assignment group, Assigned to, Caller, GGUSID,
+Description, Close notes (Internal View), Additional comments (Customer
+View), Work notes (Internal View)\f[].
+I\[aq]ve found it particularly relevant to filter out the tickets by
+\f[B]Functional Element.Organic Unit\f[] being your section.
+.PP
+Save your report and hit the \f[B]Schedule\f[] button.
+Set \f[B]Users\f[] to e.g.\ yourself, tick the \f[B]Active\f[] checkbox
+and adjust the schedule according to your needs.
+Don\[aq]t forget to set the \f[B]Type\f[] to \f[B]CSV\f[].
+.SH RETRIEVING REPORTS FROM A MAILBOX
+.PP
+Once your report is scheduled for being sent to a particular mailbox,
+the rest is a matter of programmatically extract it to feed it to
+\f[B]snowplough\f[].
+It could be convenient to have all the report mails be moved to a
+dedicated folder.
+.PP
+Periodically retrieve the latest report from the mailbox.
+Finally, have a Python script such as \f[B]shovel.py\f[] open the mail
+from the generated Maildir and extract the attachment which you can copy
+to a directory for \f[B]snowplough\f[] to pick it up.
+.SH BUGS
+.PP
+Undoubtedly.
+.SH AUTHORS
+Jérôme Belleman <Jerome.Belleman@cern.ch>.
