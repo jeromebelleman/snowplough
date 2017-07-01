@@ -1,6 +1,7 @@
-% SNOWPLOUGH(1)
-% Jérôme Belleman <Jerome.Belleman@cern.ch>
-% June 2013
+A ticket indexer and searcher which is useful to share ticket-handling
+knowledge in a team. You can perform full-text searches or search by assignees,
+date, etc. Results can be viewed in a Vim buffer folding tickets for easier
+reading and data mining.
 
 # NAME
 
